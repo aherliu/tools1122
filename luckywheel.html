@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班級幸運大輪盤</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* 自定義動畫 */
+        @keyframes pop-in {
+            0% { opacity: 0; transform: scale(0.5); }
+            80% { transform: scale(1.1); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .animate-pop-in {
+            animation: pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        @keyframes confetti-drop {
+            0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(300px) rotate(720deg); opacity: 0; }
+        }
+        .confetti {
+            position: absolute;
+            top: 0;
+            animation: confetti-drop 1.5s linear forwards;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out forwards;
+        }
+
+        /* 隱藏捲軸但保持功能 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-100 flex flex-col items-center py-8 px-4 font-sans text-slate-800">
+
+    <!-- 標題區 -->
+    <header class="text-center mb-8 flex flex-col items-center relative w-full max-w-4xl">
+        <h1 class="text-4xl font-extrabold text-slate-800 mb-2 tracking-tight">
+            🎲 班級幸運大輪盤
+        </h1>
+        <p class="text-slate-500">輸入名單，公平抽籤！</p>
+        
+        <!-- 音效開關 -->
+        <button id="muteBtn" class="absolute right-0 top-2 p-2 rounded-full transition-colors bg-blue-100 text-blue-600" title="靜音">
+            <i data-lucide="volume-2"></i>
+        </button>
+    </header>
+
+    <div class="max-w-4xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+        
+        <!-- 左側：控制區 -->
+        <div class="p-6 md:w-1/3 bg-slate-50 border-r border-slate-200 flex flex-col transition-all" id="leftPanel">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-slate-700 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5"></i> 設定名單
+                </h2>
+                <button id="mobileEditBtn" class="text-blue-500 hover:text-blue-600 text-sm font-medium md:hidden">
+                    編輯
+                </button>
+            </div>
+
+            <!-- 抽後刪除選項 -->
+            <div id="removeOptionContainer" class="mb-4 flex items-center gap-2 cursor-pointer select-none bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors">
+                <div id="removeCheckbox" class="w-5 h-5 rounded border flex items-center justify-center bg-blue-500 border-blue-500 text-white transition-colors">
+                    <i data-lucide="check" class="w-3 h-3"></i>
+                </div>
+                <span class="text-slate-700 font-medium text-sm">抽到後從名單刪除</span>
+            </div>
+
+            <!-- 編輯模式介面 (預設隱藏) -->
+            <div id="editMode" class="hidden flex-1 flex-col animate-fade-in">
+                <label class="text-sm text-slate-500 mb-2">請輸入項目 (每行一個)：</label>
+                <textarea id="inputArea" class="flex-1 w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-slate-700 mb-4" placeholder="例如：&#10;王小明&#10;李大華&#10;張三"></textarea>
+                <div class="flex gap-2">
+                    <button id="clearBtn" class="px-4 py-2 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors">清空</button>
+                    <button id="saveBtn" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-bold shadow-md">完成設定</button>
+                </div>
+            </div>
+
+            <!-- 顯示模式介面 -->
+            <div id="viewMode" class="flex-1 flex flex-col">
+                <div class="bg-white rounded-xl border border-slate-200 p-4 flex-1 overflow-y-auto max-h-[300px] md:max-h-full relative no-scrollbar" id="listContainer">
+                    <!-- 名單將由 JS 動態生成 -->
+                    <ul id="itemList" class="space-y-1"></ul>
+                    
+                    <!-- 空名單提示 -->
+                    <div id="emptyHint" class="hidden absolute inset-0 flex-col items-center justify-center text-slate-400">
+                        <i data-lucide="trash-2" class="w-8 h-8 mb-2 opacity-50"></i>
+                        <p>名單已空</p>
+                    </div>
+                </div>
+                <button id="editBtn" class="mt-4 w-full py-3 border-2 border-dashed border-slate-300 text-slate-500 rounded-xl hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-2">
+                    <i data-lucide="edit-3" class="w-4 h-4"></i> 重設/貼上名單
+                </button>
+            </div>
+        </div>
+
+        <!-- 右側：輪盤區 -->
+        <div class="flex-1 bg-white relative flex flex-col items-center justify-center p-4 overflow-hidden">
+            
+            <!-- 手機版浮動編輯按鈕 -->
+            <div class="absolute top-4 right-4 md:hidden z-10" id="mobileFloatEdit">
+                <button class="bg-slate-100 p-2 rounded-full shadow text-slate-600">
+                    <i data-lucide="edit-3"></i>
+                </button>
+            </div>
+
+            <!-- 輪盤主體 -->
+            <div class="relative w-full max-w-[400px] aspect-square">
+                <!-- 指針 -->
+                <div class="absolute top-1/2 right-[-20px] transform -translate-y-1/2 z-20 drop-shadow-lg">
+                    <div class="w-0 h-0 border-t-[15px] border-t-transparent border-b-[15px] border-b-transparent border-r-[30px] border-r-red-600 transform rotate-180"></div>
+                </div>
+
+                <!-- 轉盤 SVG 容器 -->
+                <!-- 修正重點：時間改為 3000ms，配合 2 圈旋轉 -->
+                <div id="wheelContainer" class="w-full h-full transition-transform duration-[3000ms] ease-[cubic-bezier(0.1,0.7,0.1,1)] transform rotate-0">
+                    <svg id="wheelSvg" viewBox="-1 -1 2 2" class="w-full h-full transform rotate-0"></svg>
+                </div>
+
+                <!-- 空輪盤提示 -->
+                <div id="wheelEmpty" class="hidden absolute inset-0 rounded-full bg-slate-100 border-4 border-slate-200 items-center justify-center text-slate-400 font-bold">
+                    請輸入名單
+                </div>
+                
+                <!-- 中心點 -->
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white rounded-full shadow-lg border-4 border-slate-200 z-10 flex items-center justify-center">
+                    <div class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center text-white">
+                        <span class="font-bold text-xs">Lucky</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按鈕 -->
+            <div class="mt-8 flex flex-col items-center gap-4 z-30 h-20 w-full justify-center">
+                <button id="spinBtn" class="text-2xl px-12 py-4 rounded-full font-bold shadow-xl transform transition-all flex items-center gap-3 bg-gradient-to-b from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white hover:scale-105 hover:shadow-2xl active:scale-95 ring-4 ring-red-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-500 disabled:ring-0">
+                    <i data-lucide="play" class="fill-current"></i> 開始抽籤
+                </button>
+                
+                <p id="errorMsg" class="hidden text-red-500 text-sm font-bold bg-red-50 px-3 py-1 rounded-full animate-bounce">
+                    名單至少需要兩個項目
+                </p>
+            </div>
+
+            <!-- 獲勝者彈窗 -->
+            <div id="resultModal" class="hidden absolute inset-0 z-40 bg-black/40 backdrop-blur-sm flex items-center justify-center animate-fade-in p-4">
+                <div class="bg-white p-8 rounded-3xl shadow-2xl text-center transform animate-pop-in max-w-sm w-full relative overflow-hidden">
+                    <!-- 背景光暈 -->
+                    <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-yellow-100/50 to-transparent pointer-events-none"></div>
+                    
+                    <div class="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 text-yellow-600 rounded-full mb-4 animate-bounce">
+                        <i data-lucide="trophy" class="w-10 h-10"></i>
+                    </div>
+                    <h3 class="text-slate-500 text-lg font-medium mb-2">中獎的是...</h3>
+                    <div id="winnerText" class="text-4xl md:text-5xl font-black text-slate-800 mb-6 break-words leading-tight">
+                        名字
+                    </div>
+                    <button id="closeModalBtn" class="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2">
+                        <i id="modalBtnIcon" data-lucide="refresh-cw" class="w-4 h-4"></i> <span id="modalBtnText">確定</span>
+                    </button>
+                    
+                    <!-- 彩帶容器 -->
+                    <div id="confettiContainer"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <footer class="mt-8 text-slate-400 text-sm">
+        © 班級教學專用工具
+    </footer>
+
+    <!-- JavaScript 邏輯 -->
+    <script>
+        // 狀態變數
+        let items = ['1號', '2號', '3號', '4號', '5號', '6號'];
+        let isSpinning = false;
+        let currentRotation = 0;
+        let isMuted = false;
+        let removeAfterWin = true;
+        let winner = null;
+        let audioContext = null;
+
+        const COLORS = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD',
+            '#D4A5A5', '#9B59B6', '#3498DB', '#E67E22', '#2ECC71'
+        ];
+
+        // DOM 元素
+        const els = {
+            wheelSvg: document.getElementById('wheelSvg'),
+            wheelContainer: document.getElementById('wheelContainer'),
+            wheelEmpty: document.getElementById('wheelEmpty'),
+            itemList: document.getElementById('itemList'),
+            emptyHint: document.getElementById('emptyHint'),
+            spinBtn: document.getElementById('spinBtn'),
+            editMode: document.getElementById('editMode'),
+            viewMode: document.getElementById('viewMode'),
+            inputArea: document.getElementById('inputArea'),
+            saveBtn: document.getElementById('saveBtn'),
+            clearBtn: document.getElementById('clearBtn'),
+            editBtn: document.getElementById('editBtn'),
+            mobileEditBtn: document.getElementById('mobileEditBtn'),
+            mobileFloatEdit: document.getElementById('mobileFloatEdit'),
+            removeOptionContainer: document.getElementById('removeOptionContainer'),
+            removeCheckbox: document.getElementById('removeCheckbox'),
+            muteBtn: document.getElementById('muteBtn'),
+            errorMsg: document.getElementById('errorMsg'),
+            resultModal: document.getElementById('resultModal'),
+            winnerText: document.getElementById('winnerText'),
+            closeModalBtn: document.getElementById('closeModalBtn'),
+            modalBtnText: document.getElementById('modalBtnText'),
+            modalBtnIcon: document.getElementById('modalBtnIcon'),
+            confettiContainer: document.getElementById('confettiContainer')
+        };
+
+        // 初始化
+        function init() {
+            updateUI();
+            renderWheel();
+            renderList();
+            lucide.createIcons();
+
+            // 事件監聽
+            els.spinBtn.addEventListener('click', spinWheel);
+            
+            // 編輯切換
+            const startEdit = () => {
+                els.viewMode.classList.add('hidden');
+                els.editMode.classList.remove('hidden');
+                els.mobileEditBtn.classList.add('hidden');
+                els.removeOptionContainer.classList.add('hidden'); // 編輯時隱藏設定
+                els.mobileFloatEdit.classList.add('hidden');
+                els.inputArea.value = items.join('\n');
+            };
+            
+            els.editBtn.addEventListener('click', startEdit);
+            els.mobileEditBtn.addEventListener('click', startEdit);
+            els.mobileFloatEdit.addEventListener('click', startEdit);
+
+            // 儲存名單
+            els.saveBtn.addEventListener('click', () => {
+                const text = els.inputArea.value;
+                const newList = text.split('\n').filter(line => line.trim() !== '');
+                if (newList.length < 2) {
+                    alert('請至少輸入兩個項目才能進行抽籤！');
+                    return;
+                }
+                items = newList;
+                currentRotation = 0; // 重置角度
+                els.wheelContainer.style.transition = 'none'; // 暫時移除動畫避免亂轉
+                els.wheelContainer.style.transform = `rotate(${currentRotation}deg)`;
+                // 強制重繪後再加回動畫類別 (雖然這裡用 inline style 蓋過，但保持好習慣)
+                setTimeout(() => {
+                     els.wheelContainer.style.transition = '';
+                }, 50);
+                
+                els.editMode.classList.add('hidden');
+                els.viewMode.classList.remove('hidden');
+                els.mobileEditBtn.classList.remove('hidden');
+                els.removeOptionContainer.classList.remove('hidden');
+                els.mobileFloatEdit.classList.remove('hidden');
+                
+                updateUI();
+                renderWheel();
+                renderList();
+            });
+
+            els.clearBtn.addEventListener('click', () => {
+                els.inputArea.value = '';
+                els.inputArea.focus();
+            });
+
+            // 設定開關
+            els.muteBtn.addEventListener('click', () => {
+                isMuted = !isMuted;
+                els.muteBtn.className = `absolute right-0 top-2 p-2 rounded-full transition-colors ${isMuted ? 'bg-slate-200 text-slate-500' : 'bg-blue-100 text-blue-600'}`;
+                els.muteBtn.innerHTML = isMuted ? '<i data-lucide="volume-x"></i>' : '<i data-lucide="volume-2"></i>';
+                lucide.createIcons();
+            });
+
+            els.removeOptionContainer.addEventListener('click', () => {
+                removeAfterWin = !removeAfterWin;
+                els.removeCheckbox.className = `w-5 h-5 rounded border flex items-center justify-center transition-colors ${removeAfterWin ? 'bg-blue-500 border-blue-500 text-white' : 'border-slate-400 text-transparent'}`;
+                lucide.createIcons();
+            });
+
+            // 關閉結果
+            els.closeModalBtn.addEventListener('click', () => {
+                els.resultModal.classList.add('hidden');
+                
+                if (removeAfterWin && winner) {
+                    items = items.filter(i => i !== winner);
+                    // 刪除後不需要重置角度為0，只要更新輪盤即可，保持當前角度體驗較好
+                    // 但如果名單變少，角度對應會跑掉，所以還是建議重置或重新計算
+                    // 簡單起見，這裡重置角度，避免扇形錯位
+                    currentRotation = 0;
+                    els.wheelContainer.style.transition = 'none';
+                    els.wheelContainer.style.transform = `rotate(0deg)`;
+                    setTimeout(() => {
+                         els.wheelContainer.style.transition = '';
+                    }, 50);
+
+                    renderWheel();
+                    renderList();
+                    updateUI();
+                }
+                winner = null;
+            });
+        }
+
+        // 更新 UI 狀態
+        function updateUI() {
+            const canSpin = items.length >= 2;
+            els.spinBtn.disabled = isSpinning || !canSpin;
+            els.spinBtn.innerHTML = isSpinning 
+                ? '抽籤中...' 
+                : '<i data-lucide="play" class="fill-current w-5 h-5"></i> 開始抽籤';
+            
+            if (items.length < 2 && !isSpinning) {
+                els.errorMsg.classList.remove('hidden');
+                els.errorMsg.textContent = items.length === 0 ? "名單已空，請重新輸入" : "名單至少需要兩個項目";
+            } else {
+                els.errorMsg.classList.add('hidden');
+            }
+
+            if (removeAfterWin) {
+                els.modalBtnText.textContent = "確認並移除";
+                els.modalBtnIcon.setAttribute('data-lucide', 'trash-2');
+            } else {
+                els.modalBtnText.textContent = "確定";
+                els.modalBtnIcon.setAttribute('data-lucide', 'refresh-cw');
+            }
+            lucide.createIcons();
+        }
+
+        // 繪製輪盤
+        function renderWheel() {
+            els.wheelSvg.innerHTML = '';
+            if (items.length === 0) {
+                els.wheelSvg.classList.add('hidden');
+                els.wheelEmpty.classList.remove('hidden');
+                return;
+            }
+            els.wheelSvg.classList.remove('hidden');
+            els.wheelEmpty.classList.add('hidden');
+
+            const total = items.length;
+            items.forEach((item, index) => {
+                const percent = 1 / total;
+                const startAngle = index * percent;
+                const endAngle = (index + 1) * percent;
+
+                const x1 = Math.cos(2 * Math.PI * startAngle);
+                const y1 = Math.sin(2 * Math.PI * startAngle);
+                const x2 = Math.cos(2 * Math.PI * endAngle);
+                const y2 = Math.sin(2 * Math.PI * endAngle);
+
+                const largeArcFlag = percent > 0.5 ? 1 : 0;
+
+                const pathData = `M 0 0 L ${x1} ${y1} A 1 1 0 ${largeArcFlag} 1 ${x2} ${y2} L 0 0`;
+
+                const midAngle = (startAngle + endAngle) / 2;
+                const textRadius = 0.75;
+                const textX = Math.cos(2 * Math.PI * midAngle) * textRadius;
+                const textY = Math.sin(2 * Math.PI * midAngle) * textRadius;
+                const rotateAngle = midAngle * 360;
+
+                const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                path.setAttribute("d", pathData);
+                path.setAttribute("fill", COLORS[index % COLORS.length]);
+                path.setAttribute("stroke", "white");
+                path.setAttribute("stroke-width", "0.02");
+
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", textX);
+                text.setAttribute("y", textY);
+                text.setAttribute("fill", "white");
+                text.setAttribute("font-size", total > 12 ? "0.08" : "0.12");
+                text.setAttribute("font-weight", "bold");
+                text.setAttribute("text-anchor", "middle");
+                text.setAttribute("alignment-baseline", "middle");
+                text.setAttribute("transform", `rotate(${rotateAngle}, ${textX}, ${textY})`);
+                text.style.pointerEvents = "none";
+                text.style.userSelect = "none";
+                text.textContent = item.length > 5 ? item.substring(0, 5) + '..' : item;
+
+                group.appendChild(path);
+                group.appendChild(text);
+                els.wheelSvg.appendChild(group);
+            });
+        }
+
+        // 繪製列表
+        function renderList() {
+            els.itemList.innerHTML = '';
+            if (items.length === 0) {
+                els.emptyHint.classList.remove('hidden');
+                els.emptyHint.classList.add('flex');
+            } else {
+                els.emptyHint.classList.add('hidden');
+                els.emptyHint.classList.remove('flex');
+                
+                items.forEach((item, idx) => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center gap-2 text-slate-700 py-1 px-2 rounded hover:bg-slate-50';
+                    li.innerHTML = `
+                        <span class="w-5 h-5 rounded-full flex items-center justify-center text-xs text-white font-bold" style="background-color: ${COLORS[idx % COLORS.length]}">
+                            ${idx + 1}
+                        </span>
+                        <span class="truncate text-sm">${item}</span>
+                    `;
+                    els.itemList.appendChild(li);
+                });
+            }
+        }
+
+        // 音效功能
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (isMuted) return;
+            initAudio();
+            const ctx = audioContext;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            const now = ctx.currentTime;
+
+            if (type === 'tick') {
+                // 答答聲：高頻短促音
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(600, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+                osc.start(now);
+                osc.stop(now + 0.03);
+            } else if (type === 'win') {
+                // 勝利音效
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now); 
+                osc.frequency.setValueAtTime(659.25, now + 0.1); 
+                osc.frequency.setValueAtTime(783.99, now + 0.2); 
+                osc.frequency.setValueAtTime(1046.50, now + 0.3); 
+                
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.3, now + 0.1);
+                gain.gain.linearRampToValueAtTime(0, now + 1.5);
+                
+                osc.start(now);
+                osc.stop(now + 1.5);
+            }
+        }
+
+        // 抽籤功能
+        function spinWheel() {
+            if (isSpinning || items.length < 2) return;
+            
+            initAudio();
+            isSpinning = true;
+            updateUI();
+
+            // 決定中獎者
+            const newWinnerIndex = Math.floor(Math.random() * items.length);
+            winner = items[newWinnerIndex];
+
+            // 計算角度
+            const segmentAngle = 360 / items.length;
+            // 修正：基礎圈數改為 2 圈 (360 * 2)
+            const extraSpins = 360 * 2; 
+            
+            // 計算目標角度
+            const targetAngle = extraSpins + (360 - (newWinnerIndex * segmentAngle + segmentAngle / 2));
+            currentRotation += targetAngle;
+
+            // 執行旋轉
+            els.wheelContainer.style.transform = `rotate(${currentRotation}deg)`;
+
+            // 修正：答答聲音效播放邏輯 (配合較慢的轉速，將初始間隔調慢)
+            let tickCount = 0;
+            let tickDelay = 150; // 初始間隔 (從 50 改為 150，避免轉慢聲音快)
+            
+            const playTickLoop = () => {
+                if (!isSpinning) return;
+                
+                playSound('tick');
+                tickCount++;
+                
+                // 讓聲音間隔越來越長 (模擬減速)
+                if (tickCount < 5) tickDelay = 150;
+                else if (tickCount < 10) tickDelay = 200;
+                else if (tickCount < 15) tickDelay = 300;
+                else tickDelay += 50; // 之後越來越慢
+
+                // 如果還在旋轉時間內 (3000ms)，繼續播放
+                if (tickDelay < 600) {
+                    setTimeout(playTickLoop, tickDelay);
+                }
+            };
+            
+            playTickLoop();
+
+            // 結束處理 (配合 CSS duration 3000ms)
+            setTimeout(() => {
+                isSpinning = false;
+                showResult(winner);
+                playSound('win');
+                updateUI();
+            }, 3000);
+        }
+
+        function showResult(name) {
+            els.winnerText.textContent = name;
+            els.resultModal.classList.remove('hidden');
+            
+            // 產生彩帶
+            els.confettiContainer.innerHTML = '';
+            const colors = ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500'];
+            for(let i=0; i<5; i++) {
+                const el = document.createElement('div');
+                const color = colors[i % colors.length];
+                el.className = `confetti w-2 h-6 ${color} rounded`;
+                el.style.left = `${20 + i * 15}%`;
+                el.style.animationDelay = `${i * 0.1}s`;
+                els.confettiContainer.appendChild(el);
+            }
+        }
+
+        // 啟動
+        init();
+    </script>
+</body>
+</html>
