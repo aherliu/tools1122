@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>應用程式入口網</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- 頂部標題區 -->
+    <header class="py-12 px-4 text-center relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl -z-10"></div>
+        <h1 class="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+            我的網頁應用中心
+        </h1>
+        <p class="text-slate-400 text-lg max-w-2xl mx-auto">
+            歡迎來到應用程式入口，請選擇下方您想要使用的工具或遊戲。
+        </p>
+    </header>
+
+    <!-- 主要內容區：卡片網格 -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+
+            <!-- 卡片 1: 俄羅斯方塊 -->
+            <a href="tetris.html" class="block group relative bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden card-hover transition-all duration-300">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-32 w-32 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M2 12h20"/><path d="m12 2 4 4"/><path d="m22 12-4 4"/><path d="m2 12 4-4"/><path d="m12 22-4-4"/></svg>
+                </div>
+                <div class="p-8 relative z-10">
+                    <div class="w-14 h-14 bg-purple-500/20 rounded-xl flex items-center justify-center mb-6 text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-colors duration-300">
+                        <!-- Icon: Tetris-like blocks -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="3" y="3" width="7" height="7"/></svg>
+                    </div>
+                    <h2 class="text-2xl font-bold mb-3 text-white">俄羅斯方塊</h2>
+                    <p class="text-slate-400 mb-6">經典益智遊戲。挑戰您的反應速度與空間邏輯，消除方塊獲得高分。</p>
+                    <div class="flex items-center text-purple-400 font-medium group-hover:text-purple-300">
+                        開始遊戲 <span class="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+                    </div>
+                </div>
+                <div class="h-1 w-full bg-gradient-to-r from-purple-500 to-pink-500"></div>
+            </a>
+
+            <!-- 卡片 2: 幸運輪盤 -->
+            <a href="luckywheel.html" class="block group relative bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden card-hover transition-all duration-300">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-32 w-32 text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m12 6 2-2-2-2"/><path d="m6 12-2-2-2 2"/></svg>
+                </div>
+                <div class="p-8 relative z-10">
+                    <div class="w-14 h-14 bg-yellow-500/20 rounded-xl flex items-center justify-center mb-6 text-yellow-400 group-hover:bg-yellow-500 group-hover:text-white transition-colors duration-300">
+                        <!-- Icon: Wheel/Pie Chart -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 12 19.07 4.93"/><path d="M12 12 4.93 4.93"/><path d="M12 12v10"/></svg>
+                    </div>
+                    <h2 class="text-2xl font-bold mb-3 text-white">幸運輪盤</h2>
+                    <p class="text-slate-400 mb-6">午餐吃什麼？誰來當值日生？輸入選項，讓輪盤來幫您做決定！</p>
+                    <div class="flex items-center text-yellow-400 font-medium group-hover:text-yellow-300">
+                        試試手氣 <span class="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+                    </div>
+                </div>
+                <div class="h-1 w-full bg-gradient-to-r from-yellow-500 to-orange-500"></div>
+            </a>
+
+            <!-- 卡片 3: 班級點名系統 -->
+            <a href="rollcall.html" class="block group relative bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden card-hover transition-all duration-300">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-32 w-32 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+                <div class="p-8 relative z-10">
+                    <div class="w-14 h-14 bg-emerald-500/20 rounded-xl flex items-center justify-center mb-6 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-300">
+                        <!-- Icon: User Check -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+                    </div>
+                    <h2 class="text-2xl font-bold mb-3 text-white">班級點名系統</h2>
+                    <p class="text-slate-400 mb-6">老師的好幫手。支援名單匯入、隨機抽點與出缺席紀錄功能。</p>
+                    <div class="flex items-center text-emerald-400 font-medium group-hover:text-emerald-300">
+                        開始點名 <span class="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+                    </div>
+                </div>
+                <div class="h-1 w-full bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+            </a>
+
+        </div>
+    </main>
+
+    <!-- 頁尾 -->
+    <footer class="py-8 text-center text-slate-500 text-sm border-t border-slate-800 mt-8">
+        <p>&copy; 2024 網頁應用程式中心. Built with Tailwind CSS.</p>
+    </footer>
+
+</body>
+</html>
