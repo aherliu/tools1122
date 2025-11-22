@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班級點名系統 (本機版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { background-color: #f8fafc; }
+    </style>
+</head>
+<body class="text-slate-800 font-sans pb-20">
+
+    <!-- Header Section -->
+    <header class="bg-white shadow-sm sticky top-0 z-10 border-b border-slate-200">
+        <div class="max-w-4xl mx-auto px-4 py-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="clipboard-list" class="w-7 h-7 text-blue-600"></i>
+                        班級點名系統 <span class="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full ml-2">本機版</span>
+                    </h1>
+                    <p class="text-slate-500 text-sm mt-1">資料儲存於瀏覽器，無需網路即可使用</p>
+                </div>
+                
+                <div class="flex items-center gap-3 bg-slate-100 p-1.5 rounded-lg">
+                    <i data-lucide="calendar" class="w-5 h-5 text-slate-500 ml-2"></i>
+                    <input type="date" id="date-picker" class="bg-transparent border-none text-slate-700 font-medium focus:ring-0 p-1 outline-none">
+                </div>
+            </div>
+            <div id="stats-container" class="grid grid-cols-2 md:grid-cols-5 gap-2 mt-6 hidden"></div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        
+        <!-- Actions Bar -->
+        <div class="flex flex-wrap gap-3 justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+            <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                 <button id="btn-copy" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-colors text-sm font-medium">
+                    <i data-lucide="copy" class="w-4 h-4"></i> 複製報告
+                </button>
+                <button id="btn-reset" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg shadow-sm transition-colors text-sm font-medium">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重置今日
+                </button>
+            </div>
+            <div class="w-full md:w-auto text-center md:text-right text-sm font-medium text-slate-500 mt-2 md:mt-0">
+                出席率: <span id="attendance-rate" class="text-orange-500">0%</span>
+            </div>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div id="bulk-actions" class="grid grid-cols-2 md:grid-cols-4 gap-2 hidden">
+            <button onclick="app.handleBulkStatus('present')" class="flex items-center justify-center gap-2 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg text-sm font-medium transition-colors"><i data-lucide="check-circle" class="w-4 h-4"></i> 全選出席</button>
+            <button onclick="app.handleBulkStatus('absent')" class="flex items-center justify-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-sm font-medium transition-colors"><i data-lucide="x-circle" class="w-4 h-4"></i> 全選缺席</button>
+            <button onclick="app.handleBulkStatus('late')" class="flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-lg text-sm font-medium transition-colors"><i data-lucide="clock" class="w-4 h-4"></i> 全選遲到</button>
+            <button onclick="app.handleBulkStatus('excused')" class="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-sm font-medium transition-colors"><i data-lucide="minus-circle" class="w-4 h-4"></i> 全選請假</button>
+        </div>
+
+        <!-- Add Student Form -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div class="flex flex-col md:flex-row gap-3">
+                <form id="form-add-student" class="flex-1 flex gap-3">
+                    <div class="relative flex-1">
+                        <div class="absolute left-3 top-1/2 -translate-y-1/2">
+                            <i data-lucide="users" class="w-5 h-5 text-slate-400"></i>
+                        </div>
+                        <input type="text" id="input-student-name" placeholder="輸入學生姓名新增..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+                    </div>
+                    <button type="submit" id="btn-add" disabled class="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 font-medium whitespace-nowrap">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i> <span class="hidden sm:inline">新增</span>
+                    </button>
+                </form>
+                <button id="btn-batch-add" class="px-4 py-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 font-medium whitespace-nowrap disabled:opacity-50" title="快速建立 1-30 號學生">
+                    <i data-lucide="list-plus" class="w-4 h-4"></i> <span class="hidden md:inline">快速加入 1-30 號</span><span class="md:hidden">1-30號</span>
+                </button>
+            </div>
+            <!-- Backup/Restore Help -->
+            <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-400 flex justify-between items-center">
+                <span>提示：若清除瀏覽器快取，資料可能會消失。</span>
+                <button onclick="app.clearAllData()" class="text-red-400 hover:text-red-600 hover:underline">清除所有資料</button>
+            </div>
+        </div>
+
+        <!-- Student List -->
+        <div id="student-list-container" class="space-y-3">
+            <div id="empty-state" class="text-center py-12 bg-white rounded-xl border border-dashed border-slate-300 hidden">
+                <div class="flex justify-center mb-3"><i data-lucide="users" class="w-12 h-12 text-slate-300"></i></div>
+                <p class="text-slate-500">尚未建立學生名單</p>
+                <p class="text-slate-400 text-sm mt-1">請在上方輸入姓名或點擊「1-30號」快速建立</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ==========================================
+        //  Local Storage Manager
+        // ==========================================
+        const STORAGE_KEY_STUDENTS = 'roll_call_students_v1';
+        const STORAGE_PREFIX_ATTENDANCE = 'roll_call_attendance_';
+
+        const storage = {
+            getStudents: () => {
+                const data = localStorage.getItem(STORAGE_KEY_STUDENTS);
+                return data ? JSON.parse(data) : [];
+            },
+            saveStudents: (students) => {
+                localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(students));
+            },
+            getAttendance: (date) => {
+                const data = localStorage.getItem(STORAGE_PREFIX_ATTENDANCE + date);
+                return data ? JSON.parse(data) : {};
+            },
+            saveAttendance: (date, data) => {
+                localStorage.setItem(STORAGE_PREFIX_ATTENDANCE + date, JSON.stringify(data));
+            },
+            clearDate: (date) => {
+                localStorage.removeItem(STORAGE_PREFIX_ATTENDANCE + date);
+            },
+            clearAll: () => {
+                localStorage.removeItem(STORAGE_KEY_STUDENTS);
+                // Clear all attendance records
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith(STORAGE_PREFIX_ATTENDANCE)) {
+                        localStorage.removeItem(key);
+                    }
+                });
+            }
+        };
+
+        // ==========================================
+        //  App Logic
+        // ==========================================
+
+        window.app = { handleBulkStatus: null, updateStatus: null, deleteStudent: null, clearAllData: null };
+
+        let state = {
+            students: [],
+            attendance: {},
+            date: new Date().toISOString().split('T')[0],
+            isAddingBatch: false
+        };
+
+        const els = {
+            datePicker: document.getElementById('date-picker'),
+            statsContainer: document.getElementById('stats-container'),
+            studentList: document.getElementById('student-list-container'),
+            emptyState: document.getElementById('empty-state'),
+            btnAdd: document.getElementById('btn-add'),
+            inputName: document.getElementById('input-student-name'),
+            bulkActions: document.getElementById('bulk-actions'),
+            rateText: document.getElementById('attendance-rate'),
+            btnBatchAdd: document.getElementById('btn-batch-add'),
+            btnCopy: document.getElementById('btn-copy'),
+            btnReset: document.getElementById('btn-reset'),
+            formAdd: document.getElementById('form-add-student')
+        };
+
+        function init() {
+            els.datePicker.value = state.date;
+            lucide.createIcons();
+
+            // Load initial data
+            loadData();
+            setupEventListeners();
+        }
+
+        function loadData() {
+            // Load Students
+            state.students = storage.getStudents();
+            // Sort students
+            state.students.sort((a, b) => {
+                const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
+                const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
+                if (numA > 0 && numB > 0 && numA !== numB) return numA - numB;
+                return a.createdAt - b.createdAt;
+            });
+
+            // Load Attendance
+            loadAttendanceForDate(state.date);
+            
+            render();
+        }
+
+        function loadAttendanceForDate(date) {
+            state.attendance = storage.getAttendance(date);
+        }
+
+        function render() {
+            renderStudentList();
+            renderStats();
+            updateUIState();
+            lucide.createIcons();
+        }
+
+        function updateUIState() {
+            if (state.students.length > 0) {
+                els.emptyState.classList.add('hidden');
+                els.statsContainer.classList.remove('hidden');
+                els.bulkActions.classList.remove('hidden');
+            } else {
+                els.emptyState.classList.remove('hidden');
+                els.statsContainer.classList.add('hidden');
+                els.bulkActions.classList.add('hidden');
+            }
+
+            if (state.isAddingBatch) {
+                els.btnBatchAdd.disabled = true;
+                els.btnBatchAdd.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 處理中...`;
+            } else {
+                els.btnBatchAdd.disabled = false;
+                els.btnBatchAdd.innerHTML = `<i data-lucide="list-plus" class="w-4 h-4"></i> <span class="hidden md:inline">快速加入 1-30 號</span><span class="md:hidden">1-30號</span>`;
+            }
+        }
+
+        function renderStats() {
+            const stats = { present: 0, absent: 0, late: 0, excused: 0, totalMarked: 0 };
+            Object.values(state.attendance).forEach(status => {
+                if (stats[status] !== undefined) {
+                    stats[status]++;
+                    stats.totalMarked++;
+                }
+            });
+
+            const progress = state.students.length > 0 ? Math.round((stats.present / state.students.length) * 100) : 0;
+            els.rateText.textContent = `${progress}%`;
+            els.rateText.className = progress >= 80 ? 'text-green-600' : 'text-orange-500';
+
+            const createCard = (label, count, colorClass) => `
+                <div class="flex flex-col items-center justify-center p-3 rounded-lg ${colorClass}">
+                    <span class="text-2xl font-bold">${count}</span>
+                    <span class="text-xs font-medium opacity-80">${label}</span>
+                </div>
+            `;
+
+            els.statsContainer.innerHTML = `
+                ${createCard('應到人數', state.students.length, 'bg-slate-100 text-slate-600')}
+                ${createCard('出席', stats.present, 'bg-green-100 text-green-700')}
+                ${createCard('缺席', stats.absent, 'bg-red-100 text-red-700')}
+                ${createCard('遲到', stats.late, 'bg-orange-100 text-orange-700')}
+                ${createCard('請假', stats.excused, 'bg-gray-100 text-gray-600')}
+            `;
+        }
+
+        function renderStudentList() {
+            Array.from(els.studentList.children).forEach(child => {
+                if (child.id !== 'empty-state') child.remove();
+            });
+
+            state.students.forEach(student => {
+                const status = state.attendance[student.id];
+                const row = document.createElement('div');
+                
+                let rowClass = 'bg-white border-slate-200';
+                let avatarClass = 'bg-slate-100 text-slate-500';
+                let statusText = '尚未點名';
+
+                if (status === 'present') { rowClass = 'bg-green-50 border-green-200'; avatarClass = 'bg-green-100 text-green-700'; statusText = '已出席'; }
+                else if (status === 'absent') { rowClass = 'bg-red-50 border-red-200'; avatarClass = 'bg-red-100 text-red-700'; statusText = '缺席'; }
+                else if (status === 'late') { rowClass = 'bg-orange-50 border-orange-200'; avatarClass = 'bg-orange-100 text-orange-700'; statusText = '遲到'; }
+                else if (status === 'excused') { rowClass = 'bg-gray-100 border-gray-200'; avatarClass = 'bg-gray-200 text-gray-700'; statusText = '請假'; }
+
+                row.className = `group flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border transition-all duration-200 shadow-sm ${rowClass}`;
+                const initial = student.name.replace(/[^0-9]/g, '') || student.name.charAt(0);
+
+                row.innerHTML = `
+                    <div class="flex-1 min-w-0 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${avatarClass}">${initial}</div>
+                        <div class="min-w-0">
+                            <h3 class="font-bold text-slate-800 truncate text-lg">${student.name}</h3>
+                            <p class="text-xs text-slate-500 font-medium">${statusText}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+                        ${createStatusButton(student.id, 'present', 'check-circle', '出席', status === 'present', 'text-green-600 bg-green-50 hover:bg-green-100 border-green-200', 'bg-green-600 text-white border-green-600 ring-2 ring-green-200')}
+                        ${createStatusButton(student.id, 'absent', 'x-circle', '缺席', status === 'absent', 'text-red-600 bg-red-50 hover:bg-red-100 border-red-200', 'bg-red-600 text-white border-red-600 ring-2 ring-red-200')}
+                        ${createStatusButton(student.id, 'late', 'clock', '遲到', status === 'late', 'text-orange-600 bg-orange-50 hover:bg-orange-100 border-orange-200', 'bg-orange-500 text-white border-orange-500 ring-2 ring-orange-200')}
+                        ${createStatusButton(student.id, 'excused', 'minus-circle', '請假', status === 'excused', 'text-gray-600 bg-gray-50 hover:bg-gray-100 border-gray-200', 'bg-slate-500 text-white border-slate-500 ring-2 ring-gray-200')}
+                        <div class="w-px h-8 bg-slate-300 mx-1 hidden sm:block"></div>
+                        <button onclick="app.deleteStudent('${student.id}')" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-auto sm:ml-0" title="刪除學生"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                    </div>
+                `;
+                els.studentList.appendChild(row);
+            });
+        }
+
+        function createStatusButton(id, status, iconName, label, isActive, colorClass, activeClass) {
+            const classes = isActive ? activeClass : `bg-white hover:shadow-sm ${colorClass}`;
+            return `<button onclick="app.updateStatus('${id}', '${status}')" class="flex flex-col sm:flex-row items-center gap-1.5 px-3 py-2 rounded-lg border transition-all duration-200 flex-1 sm:flex-none justify-center min-w-[70px] sm:min-w-[auto] ${classes}"><i data-lucide="${iconName}" class="w-5 h-5 ${isActive ? 'text-white' : ''}"></i><span class="text-xs sm:text-sm font-medium">${label}</span></button>`;
+        }
+
+        // --- Actions ---
+
+        window.app.updateStatus = (studentId, status) => {
+            state.attendance[studentId] = status;
+            storage.saveAttendance(state.date, state.attendance);
+            render();
+        };
+
+        window.app.deleteStudent = (studentId) => {
+             if (!confirm('確定要刪除這位學生嗎？這也會影響歷史紀錄。')) return;
+             
+             // Remove from list
+             state.students = state.students.filter(s => s.id !== studentId);
+             storage.saveStudents(state.students);
+             
+             // Remove from today's attendance (optional, but cleaner)
+             if (state.attendance[studentId]) {
+                 delete state.attendance[studentId];
+                 storage.saveAttendance(state.date, state.attendance);
+             }
+             
+             render();
+        };
+
+        window.app.handleBulkStatus = (status) => {
+            if (state.students.length === 0) return;
+            state.students.forEach(s => state.attendance[s.id] = status);
+            storage.saveAttendance(state.date, state.attendance);
+            render();
+        };
+
+        window.app.clearAllData = () => {
+            if (!confirm('警告：此操作將刪除「本瀏覽器」內儲存的所有學生名單與點名紀錄，且無法復原。\n\n確定要清除嗎？')) return;
+            storage.clearAll();
+            location.reload();
+        };
+
+        function setupEventListeners() {
+            // Date Picker
+            els.datePicker.addEventListener('change', (e) => {
+                state.date = e.target.value;
+                loadAttendanceForDate(state.date);
+                render();
+            });
+
+            // Input Validation
+            els.inputName.addEventListener('input', (e) => els.btnAdd.disabled = !e.target.value.trim());
+            
+            // Add Student
+            els.formAdd.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = els.inputName.value.trim();
+                if (!name) return;
+
+                const newStudent = {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 5), // Simple ID
+                    name: name,
+                    createdAt: Date.now()
+                };
+
+                state.students.push(newStudent);
+                // Re-sort
+                state.students.sort((a, b) => {
+                    const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
+                    const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
+                    if (numA > 0 && numB > 0 && numA !== numB) return numA - numB;
+                    return a.createdAt - b.createdAt;
+                });
+
+                storage.saveStudents(state.students);
+                
+                els.inputName.value = '';
+                els.btnAdd.disabled = true;
+                render();
+            });
+
+            // Batch Add 1-30
+            els.btnBatchAdd.addEventListener('click', () => {
+                 if (state.students.length > 0 && !confirm('目前已有學生名單，確定要額外加入 1號 到 30號 學生嗎？')) return;
+                 
+                 state.isAddingBatch = true;
+                 updateUIState();
+
+                 // Use setTimeout to allow UI to show loading spinner briefly
+                 setTimeout(() => {
+                    const newStudents = [];
+                    for (let i = 1; i <= 30; i++) {
+                        newStudents.push({
+                            id: Date.now().toString() + '-' + i,
+                            name: `${i}號學生`,
+                            createdAt: Date.now() + i // slight offset to keep order
+                        });
+                    }
+                    state.students = [...state.students, ...newStudents];
+                    storage.saveStudents(state.students);
+                    
+                    state.isAddingBatch = false;
+                    loadData(); // Re-sort and render
+                 }, 500);
+            });
+
+            // Reset Today
+            els.btnReset.addEventListener('click', () => {
+                state.attendance = {};
+                storage.clearDate(state.date);
+                render();
+            });
+
+            // Copy Report
+            els.btnCopy.addEventListener('click', () => {
+                const stats = { present: 0, absent: 0, late: 0, excused: 0, totalMarked: 0 };
+                Object.values(state.attendance).forEach(status => {
+                    if (stats[status] !== undefined) { stats[status]++; stats.totalMarked++; }
+                });
+                const getNames = (status) => state.students.filter(s => state.attendance[s.id] === status).map(s => s.name).join(', ');
+                const text = `📅 日期：${state.date}\n------------------\n📊 應到：${state.students.length} 人\n✅ 出席：${stats.present} 人\n❌ 缺席：${stats.absent} 人\n⚠️ 遲到：${stats.late} 人\n📝 請假：${stats.excused} 人\n❓ 未點：${state.students.length - stats.totalMarked} 人\n------------------\n${stats.absent > 0 ? `❌ 缺席名單：${getNames('absent')}\n` : ''}${stats.late > 0 ? `⚠️ 遲到名單：${getNames('late')}\n` : ''}${stats.excused > 0 ? `📝 請假名單：${getNames('excused')}` : ''}`.trim();
+                fallbackCopyTextToClipboard(text);
+            });
+        }
+
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) alert('點名摘要已複製到剪貼簿！');
+                else alert('複製失敗');
+            } catch (err) { alert('複製功能受限，請手動複製'); }
+            document.body.removeChild(textArea);
+        }
+
+        // Start App
+        init();
+
+    </script>
+</body>
+</html>
